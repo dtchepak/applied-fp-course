@@ -2,6 +2,8 @@
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
 module FirstApp.Main (runApp) where
 
+import           Data.Maybe               (fromMaybe)
+import           System.Environment       (lookupEnv)
 import           Network.Wai              (Application, Request, Response,
                                            ResponseReceived, responseLBS)
 import           Network.Wai.Handler.Warp (run)
@@ -33,7 +35,10 @@ app
   -> (Response -> IO ResponseReceived)
   -> IO ResponseReceived
 app _ cb =
-  error "Application not implemented"
+  cb $ responseLBS
+    status200
+    [("Content-Type", "text/plain")]
+    "Hello, World!"
 
 -- We keep this main function here as it is useful to build your application as
 -- a library. The reasoning behind this is that when you come to do your
@@ -41,5 +46,15 @@ app _ cb =
 -- needing to worry about any initialisation code you've buried in your
 -- executable Main.hs.
 runApp :: IO ()
-runApp = run undefined undefined
+runApp = do
+    portStr <- lookupEnv "LEVEL01_APP_PORT"
+    let port = fromMaybe defaultPort (portStr >>= readInt)
+    run port app
+    where defaultPort = 8080
+
+
+readInt :: String -> Maybe Int
+readInt s = case reads s of
+    [ (p, "") ] -> pure p
+    _   -> Nothing
 
