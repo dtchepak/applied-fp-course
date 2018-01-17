@@ -39,7 +39,8 @@ import           FirstApp.Types                     (ContentType (JSON, PlainTex
                                                      Error (EmptyCommentText, EmptyTopic, UnknownRoute),
                                                      RqType (AddRq, ListRq, ViewRq),
                                                      mkCommentText, mkTopic,
-                                                     renderContentType, getCommentText)
+                                                     renderContentType, getCommentText,
+                                                     getTopic)
 
 -- Our start-up is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
@@ -52,7 +53,7 @@ runApp :: IO ()
 runApp = do
     appReqs <- prepareAppReqs
     case appReqs of
-        Right appDb -> run 3001 (app appDb)
+        Right appDb -> run 3004 (app appDb)
         Left er -> print er
 
 -- We need to complete the following steps to prepare our app requirements:
@@ -140,10 +141,10 @@ handleRequest _db (AddRq t c) =
 handleRequest _db (ViewRq t)  =
   (resp200 PlainText . showableToLbs) `ffmap` DB.getComments _db t
 handleRequest _db ListRq      =
-  (resp200 PlainText . showableToLbs) `ffmap` DB.getTopics _db
+  (resp200 PlainText . showableToLbs . fmap getTopic) `ffmap` DB.getTopics _db
 
-showableToLbs :: (Show a) => [a] -> LBS.ByteString
-showableToLbs = LBS.unlines . map (LBS.pack . show)
+showableToLbs :: (Show a) => a -> LBS.ByteString
+showableToLbs = LBS.pack . show
 
 
 ffmap :: (Functor f1, Functor f2) => (a -> b) -> f1 (f2 a) -> f1 (f2 b)
