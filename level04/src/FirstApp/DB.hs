@@ -23,6 +23,7 @@ import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
 import           FirstApp.Types                     (Comment, CommentText,
                                                      Error, Topic, getTopic,
+                                                     getCommentText, mkTopic,
                                                      fromDbComment)
 import           FirstApp.DB.Types (DBComment)
 
@@ -82,7 +83,7 @@ getComments db topic =
   -- there may be a trade-off between deciding to throw an Error if a DbComment
   -- cannot be converted to a Comment, or simply ignoring any DbComment that is
   -- not valid.
-  in traverse fromDbComment <$> Sql.query (conn db) sql [getTopic topic]
+  in traverse fromDbComment <$> Sql.query (conn db) sql (Sql.Only (getTopic topic))
     -- TODO: handle DB errors? Add to Error type?
 
 addCommentToTopic
@@ -90,28 +91,33 @@ addCommentToTopic
   -> Topic
   -> CommentText
   -> IO (Either Error ())
-addCommentToTopic =
+addCommentToTopic db topic comment =
   let
     sql = "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
-  in
-    error "addCommentToTopic not implemented"
-
+  in do
+    t <- getCurrentTime
+    Sql.execute (conn db) sql (getTopic topic, getCommentText comment, t)
+    pure (Right ())
+    -- TODO: handle errors
 
 getTopics
   :: FirstAppDB
   -> IO (Either Error [Topic])
-getTopics =
+getTopics db =
   let
     sql = "SELECT DISTINCT topic FROM comments"
-  in
-    error "getTopics not implemented"
+  in traverse (\(Sql.Only t) -> mkTopic t) <$> Sql.query_ (conn db) sql
+    -- TODO: handle DB errors? Add to Error type?
 
 deleteTopic
   :: FirstAppDB
   -> Topic
   -> IO (Either Error ())
-deleteTopic =
+deleteTopic db topic =
   let
     sql = "DELETE FROM comments WHERE topic = ?"
-  in
-    error "deleteTopic not implemented"
+  in do
+    t <- getCurrentTime
+    Sql.execute (conn db) sql (Sql.Only (getTopic topic))
+    pure (Right ())
+    -- TODO: handle errors
