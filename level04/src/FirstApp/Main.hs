@@ -36,7 +36,7 @@ import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 import           FirstApp.Conf                      (Conf, firstAppConfig)
 import qualified FirstApp.DB                        as DB
 import           FirstApp.Types                     (ContentType (JSON, PlainText),
-                                                     Error (EmptyCommentText, EmptyTopic, UnknownRoute),
+                                                     Error (EmptyCommentText, EmptyTopic, UnknownRoute, DbError),
                                                      RqType (AddRq, ListRq, ViewRq),
                                                      mkCommentText, mkTopic,
                                                      renderContentType, getCommentText,
@@ -136,8 +136,7 @@ handleRequest
   -> RqType
   -> IO (Either Error Response)
 handleRequest _db (AddRq t c) =
-  (resp200 PlainText "Success" <$) <$>
-        DB.addCommentToTopic _db t c
+  (resp200 PlainText "Success" <$) <$> DB.addCommentToTopic _db t c
 handleRequest _db (ViewRq t)  =
   (resp200 PlainText . showableToLbs) `ffmap` DB.getComments _db t
 handleRequest _db ListRq      =
@@ -145,7 +144,6 @@ handleRequest _db ListRq      =
 
 showableToLbs :: (Show a) => a -> LBS.ByteString
 showableToLbs = LBS.pack . show
-
 
 ffmap :: (Functor f1, Functor f2) => (a -> b) -> f1 (f2 a) -> f1 (f2 b)
 ffmap = fmap . fmap
@@ -192,3 +190,5 @@ mkErrorResponse EmptyCommentText =
   resp400 PlainText "Empty Comment"
 mkErrorResponse EmptyTopic =
   resp400 PlainText "Empty Topic"
+mkErrorResponse (DbError s) =
+  resp400 PlainText (showableToLbs s)

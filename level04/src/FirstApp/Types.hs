@@ -32,6 +32,8 @@ import qualified Data.Aeson.Types  as A
 
 import           Data.Time         (UTCTime)
 
+import Database.SQLite.SimpleErrors.Types (SQLiteResponse)
+
 import           FirstApp.DB.Types (DBComment
                                      ( DBComment
                                      , dbCommentId
@@ -156,7 +158,7 @@ data Error
   = UnknownRoute
   | EmptyCommentText
   | EmptyTopic
-  -- We need another constructor for our DB error types.
+  | DbError SQLiteResponse
   deriving Show
 
 data ContentType

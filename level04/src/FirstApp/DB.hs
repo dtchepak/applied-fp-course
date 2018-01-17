@@ -10,6 +10,7 @@ module FirstApp.DB
   , deleteTopic
   ) where
 
+import Data.Bifunctor (first)
 import           Data.Text                          (Text)
 import qualified Data.Text                          as Text
 
@@ -22,7 +23,7 @@ import qualified Database.SQLite.SimpleErrors       as Sql
 import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
 import           FirstApp.Types                     (Comment, CommentText,
-                                                     Error, Topic, getTopic,
+                                                     Error(DbError), Topic, getTopic,
                                                      getCommentText, mkTopic,
                                                      fromDbComment)
 import           FirstApp.DB.Types (DBComment)
@@ -62,6 +63,9 @@ initDb fp = do
   -- extension is enabled.
     createTableQ = "CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time TEXT)"
 
+runDb :: IO a -> IO (Either Error a)
+runDb = fmap (first DbError) . Sql.runDBAction
+
 -- Note that we don't store the `Comment` in the DB, it is the type we build
 -- to send to the outside world. We will be loading our `DbComment` type from
 -- the FirstApp.DB.Types module before converting trying to convert it to a
@@ -79,12 +83,9 @@ getComments
 getComments db topic =
   let
     sql = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
-  -- There are several possible implementations of this function. Paritcularly
-  -- there may be a trade-off between deciding to throw an Error if a DbComment
-  -- cannot be converted to a Comment, or simply ignoring any DbComment that is
-  -- not valid.
-  in traverse fromDbComment <$> Sql.query (conn db) sql (Sql.Only (getTopic topic))
-    -- TODO: handle DB errors? Add to Error type?
+    qry = Sql.query (conn db) sql (Sql.Only (getTopic topic))
+  in
+    (>>= traverse fromDbComment) <$> runDb qry
 
 addCommentToTopic
   :: FirstAppDB
@@ -96,9 +97,7 @@ addCommentToTopic db topic comment =
     sql = "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
   in do
     t <- getCurrentTime
-    Sql.execute (conn db) sql (getTopic topic, getCommentText comment, t)
-    pure (Right ())
-    -- TODO: handle errors
+    runDb $ Sql.execute (conn db) sql (getTopic topic, getCommentText comment, t)
 
 getTopics
   :: FirstAppDB
@@ -106,8 +105,7 @@ getTopics
 getTopics db =
   let
     sql = "SELECT DISTINCT topic FROM comments"
-  in traverse (\(Sql.Only t) -> mkTopic t) <$> Sql.query_ (conn db) sql
-    -- TODO: handle DB errors? Add to Error type?
+  in (>>= traverse (\(Sql.Only t) -> mkTopic t)) <$> runDb (Sql.query_ (conn db) sql)
 
 deleteTopic
   :: FirstAppDB
@@ -118,6 +116,4 @@ deleteTopic db topic =
     sql = "DELETE FROM comments WHERE topic = ?"
   in do
     t <- getCurrentTime
-    Sql.execute (conn db) sql (Sql.Only (getTopic topic))
-    pure (Right ())
-    -- TODO: handle errors
+    runDb $ Sql.execute (conn db) sql (Sql.Only (getTopic topic))
