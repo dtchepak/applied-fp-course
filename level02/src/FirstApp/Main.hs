@@ -7,16 +7,23 @@ import           Network.Wai              (Application, Request, Response,
 import           Network.Wai.Handler.Warp (run)
 
 import           Network.HTTP.Types       (Status, hContentType, status200,
-                                           status400, status404)
+                                           status400, status404,
+                                           StdMethod(POST,GET))
+
+import           Network.HTTP.Types.Method (parseMethod)
 
 import qualified Data.ByteString.Lazy     as LBS
 
 import           Data.Either              (either)
 
+import qualified Data.Text                as T
 import           Data.Text                (Text)
-import           Data.Text.Encoding       (decodeUtf8)
+import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
 
-import           FirstApp.Types           (ContentType, Error, RqType,
+import           FirstApp.Types           (ContentType(PlainText),
+                                           Error(EmptyTopic, EmptyCommentText, InvalidRequest),
+                                           RqType(AddRq, ListRq, ViewRq),
+                                           getCommentText, getTopic,
                                            mkCommentText, mkTopic,
                                            renderContentType)
 
@@ -30,29 +37,29 @@ mkResponse
   -> ContentType
   -> LBS.ByteString
   -> Response
-mkResponse =
-  error "mkResponse not implemented"
+mkResponse status contentType =
+  responseLBS status [("ContentType", renderContentType contentType)]
 
 resp200
   :: ContentType
   -> LBS.ByteString
   -> Response
 resp200 =
-  error "resp200 not implemented"
+  mkResponse status200
 
 resp404
   :: ContentType
   -> LBS.ByteString
   -> Response
 resp404 =
-  error "resp404 not implemented"
+  mkResponse status404
 
 resp400
   :: ContentType
   -> LBS.ByteString
   -> Response
 resp400 =
-  error "resp400 not implemented"
+  mkResponse status400
 
 -- These next few functions will take raw request information and construct one
 -- of our types.
@@ -60,8 +67,8 @@ mkAddRequest
   :: Text
   -> LBS.ByteString
   -> Either Error RqType
-mkAddRequest =
-  error "mkAddRequest not implemented"
+mkAddRequest topic comment =
+  AddRq <$> mkTopic topic <*> (mkCommentText . decodeUtf8 . LBS.toStrict $ comment)
 
 -- This has a number of benefits, we're able to isolate our validation
 -- requirements into smaller components that are simpler to maintain and verify.
@@ -70,19 +77,20 @@ mkAddRequest =
 mkViewRequest
   :: Text
   -> Either Error RqType
-mkViewRequest =
-  error "mkViewRequest not implemented"
+mkViewRequest t =
+  ViewRq <$> mkTopic t
 
 mkListRequest
   :: Either Error RqType
 mkListRequest =
-  error "mkListRequest not implemented"
+  Right ListRq
 
 mkErrorResponse
   :: Error
   -> Response
-mkErrorResponse =
-  error "mkErrorResponse not implemented"
+mkErrorResponse EmptyTopic       = resp400 PlainText "Empty topic"
+mkErrorResponse EmptyCommentText = resp400 PlainText "Empty comment text"
+mkErrorResponse InvalidRequest   = resp400 PlainText "Invalid request"
 
 -- Use our ``RqType`` helpers to write a function that will take the input
 -- ``Request`` from the Wai library and turn it into something our application
@@ -90,10 +98,14 @@ mkErrorResponse =
 mkRequest
   :: Request
   -> IO ( Either Error RqType )
-mkRequest =
+mkRequest r =
   -- Remembering your pattern-matching skills will let you implement the entire
   -- specification in this function.
-  error "mkRequest not implemented"
+  case (parseMethod(requestMethod r), pathInfo r) of
+    (Right POST, [topic, "add"])  -> mkAddRequest topic <$> strictRequestBody r
+    (Right GET,  [topic, "view"]) -> pure . mkViewRequest $ topic
+    (Right GET,  ["list"])        -> pure mkListRequest
+    _                             -> pure (Left InvalidRequest)
 
 -- If we find that we need more information to handle a request, or we have a
 -- new type of request that we'd like to handle then we update the ``RqType``
@@ -109,15 +121,33 @@ mkRequest =
 handleRequest
   :: RqType
   -> Either Error Response
-handleRequest =
-  error "handleRequest not implemented"
+handleRequest (AddRq topic comment) =
+    pure $ resp200 PlainText
+            (textToLbs (T.unlines ["Add:", getTopic topic, getCommentText comment]))
+handleRequest (ViewRq topic) =
+    pure $ resp200 PlainText
+            (textToLbs (T.unlines ["View:", getTopic topic]))
+handleRequest ListRq =
+    pure $ resp200 PlainText "List"
+
+textToLbs :: Text -> LBS.ByteString
+textToLbs = LBS.fromStrict . encodeUtf8
 
 -- Reimplement this function using the new functions and ``RqType`` constructors
 -- as a guide.
 app
   :: Application
-app =
-  error "app not reimplemented"
+app r handler =
+  (>>= handleRequest) <$> mkRequest r
+   >>= handler . either mkErrorResponse id
 
+{- Using do-notation:
+
+app r handler = do
+    req <- mkRequest r
+    let resp = req >>= handleRequest
+    handler . either mkErrorResponse id $ resp
+
+-}
 runApp :: IO ()
 runApp = run 3000 app
