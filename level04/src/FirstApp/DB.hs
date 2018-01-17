@@ -32,14 +32,16 @@ import           FirstApp.Types                     (Comment, CommentText,
 -- our database queries. This also allows things to change over time without
 -- having to rewrite all of the functions that need to interact with DB related
 -- things in different ways.
-data FirstAppDB = FirstAppDB
+data FirstAppDB = FirstAppDB {
+    conn :: Connection
+}
 
 -- Quick helper to pull the connection and close it down.
 closeDb
   :: FirstAppDB
   -> IO ()
 closeDb =
-  error "closeDb not implemented"
+  Sql.close . conn
 
 -- Given a `FilePath` to our SQLite DB file, initialise the database and ensure
 -- our Table is there by running a query to create it, if it doesn't exist
@@ -47,8 +49,10 @@ closeDb =
 initDb
   :: FilePath
   -> IO ( Either SQLiteResponse FirstAppDB )
-initDb fp =
-  error "initDb not implemented"
+initDb fp = do
+  c <- Sql.open fp
+  result <- Sql.runDBAction (Sql.execute_ c createTableQ)
+  pure (FirstAppDB c <$ result)
   where
   -- Query has an `IsString` instance so string literals like this can be
   -- converted into a `Query` type when the `OverloadedStrings` language
