@@ -18,6 +18,7 @@ module FirstApp.Types
 
 import           GHC.Generics      (Generic)
 
+import           Data.Char         (toLower)
 import           Data.ByteString   (ByteString)
 import           Data.Text         (Text)
 
@@ -30,7 +31,8 @@ import qualified Data.Aeson.Types  as A
 
 import           Data.Time         (UTCTime)
 
-import           FirstApp.DB.Types (DBComment)
+import           FirstApp.DB.Types (DBComment(dbCommentId, dbCommentTopic,
+                                    dbCommentBody, dbCommentTime))
 
 newtype Topic = Topic Text
   deriving (Show, ToJSON)
@@ -69,8 +71,13 @@ data Comment = Comment
 modFieldLabel
   :: String
   -> String
-modFieldLabel =
-  error "modFieldLabel not implemented"
+modFieldLabel s =
+  fromMaybe s (fstToLower <$> stripPrefix "comment" s)
+
+fstToLower :: String -> String
+fstToLower s =
+    let (f, rest) = splitAt 1 s
+    in toLower <$> f ++ rest
 
 instance ToJSON Comment where
   -- This is one place where we can take advantage of our `Generic` instance.
@@ -95,8 +102,12 @@ instance ToJSON Comment where
 fromDbComment
   :: DBComment
   -> Either Error Comment
-fromDbComment =
-  error "fromDbComment not yet implemented"
+fromDbComment db =
+  Comment
+    <$> (pure . CommentId) (dbCommentId db)
+    <*> mkTopic (dbCommentTopic db)
+    <*> mkCommentText (dbCommentBody db)
+    <*> pure (dbCommentTime db)
 
 nonEmptyText
   :: (Text -> a)
