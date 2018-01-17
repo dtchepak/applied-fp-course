@@ -18,6 +18,7 @@ import           Network.HTTP.Types                 (Status, hContentType,
                                                      status200, status400,
                                                      status404, status500)
 
+import Data.Bifunctor (first)
 import qualified Data.ByteString.Lazy.Char8         as LBS
 
 import           Data.Either                        (Either (Left, Right),
@@ -25,7 +26,7 @@ import           Data.Either                        (Either (Left, Right),
 
 import           Data.Semigroup                     ((<>))
 import           Data.Text                          (Text)
-import           Data.Text.Encoding                 (decodeUtf8)
+import           Data.Text.Encoding                 (decodeUtf8, encodeUtf8)
 
 import           Data.Aeson                         (ToJSON)
 import qualified Data.Aeson                         as A
@@ -38,7 +39,7 @@ import           FirstApp.Types                     (ContentType (JSON, PlainTex
                                                      Error (EmptyCommentText, EmptyTopic, UnknownRoute),
                                                      RqType (AddRq, ListRq, ViewRq),
                                                      mkCommentText, mkTopic,
-                                                     renderContentType)
+                                                     renderContentType, getCommentText)
 
 -- Our start-up is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
@@ -48,7 +49,11 @@ data StartUpError
   deriving Show
 
 runApp :: IO ()
-runApp = error "runApp needs re-implementing"
+runApp = do
+    appReqs <- prepareAppReqs
+    case appReqs of
+        Right appDb -> run 3001 (app appDb)
+        Left er -> print er
 
 -- We need to complete the following steps to prepare our app requirements:
 --
@@ -61,7 +66,7 @@ runApp = error "runApp needs re-implementing"
 prepareAppReqs
   :: IO ( Either StartUpError DB.FirstAppDB )
 prepareAppReqs =
-  error "prepareAppReqs not implemented"
+  first DbInitErr <$> DB.initDb "app.db"
 
 -- | Some helper functions to make our lives a little more DRY.
 mkResponse
@@ -129,12 +134,20 @@ handleRequest
   :: DB.FirstAppDB
   -> RqType
   -> IO (Either Error Response)
-handleRequest _db (AddRq _ _) =
-  (resp200 PlainText "Success" <$) <$> error "AddRq handler not implemented"
-handleRequest _db (ViewRq _)  =
-  error "ViewRq handler not implemented"
+handleRequest _db (AddRq t c) =
+  (resp200 PlainText "Success" <$) <$>
+        DB.addCommentToTopic _db t c
+handleRequest _db (ViewRq t)  =
+  (resp200 PlainText . showableToLbs) `ffmap` DB.getComments _db t
 handleRequest _db ListRq      =
-  error "ListRq handler not implemented"
+  (resp200 PlainText . showableToLbs) `ffmap` DB.getTopics _db
+
+showableToLbs :: (Show a) => [a] -> LBS.ByteString
+showableToLbs = LBS.unlines . map (LBS.pack . show)
+
+
+ffmap :: (Functor f1, Functor f2) => (a -> b) -> f1 (f2 a) -> f1 (f2 b)
+ffmap = fmap . fmap
 
 mkRequest
   :: Request
