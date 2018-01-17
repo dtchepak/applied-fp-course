@@ -4,11 +4,9 @@ module Main where
 import           Test.Hspec
 import           Test.Hspec.Wai
 
-import           Data.String                (fromString)
-
-import qualified System.Exit                as Exit
-
-import qualified Data.ByteString.Lazy.Char8 as LBS8
+-- import           Data.String                (fromString)
+-- import qualified System.Exit                as Exit
+-- import qualified Data.ByteString.Lazy.Char8 as LBS8
 
 import qualified FirstApp.Main              as Main
 
@@ -37,12 +35,29 @@ main = do
           get "/list" `shouldRespondWith` "List Request not implemented"
 
       -- Write some more tests, below are some ideas to get you started:
-
       -- Don't worry if you don't get all of these done. :)
-
+      describe "Add Route" $ do
       -- 1) The '<topic>/add' route will respond with an error when given an empty comment
-      -- 2) The '<topic>/view' route will respond correctly when given a topic
-      -- 3) The '<topic>/view' route will respond with an error when given an empty topic
-      -- 4) A gibberish route will return a 404
+        it "should respond with error when given an empty comment" $
+          post "/puppy/add" "" `shouldRespondWith` "Empty Comment" { matchStatus = 400 }
       -- 5) The '<topic>/add' route will respond with the message from the config (the `mkMessage` function from FirstApp.Conf will help)
+        it "should add new comment" $
+          post "/puppy/add" "aww" `shouldRespondWith` "Hello there!"
+
+
+      describe "View Route" $ do
+      -- 2) The '<topic>/view' route will respond correctly when given a topic
+        it "should respond for a given topic" $
+          get "/puppy/view" `shouldRespondWith` "View Request not implemented"
+      -- 3) The '<topic>/view' route will respond with an error when given an empty topic
+        it "should respond with error when given empty topic" $
+          get "//view" `shouldRespondWith` "Empty Topic" { matchStatus = 400 }
+
+      -- 4) A gibberish route will return a 404
+      describe "Invalid route" $ do
+        it "should respond with an error for a gibberish route" $
+          get "/howdy1234" `shouldRespondWith` "Unknown Route" { matchStatus = 404 }
+        it "should respond with an error when using GET with add route" $
+          get "/puppy/add" `shouldRespondWith` "Unknown Route" { matchStatus = 404 }
+
 
