@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RecordWildCards            #-}
 module FirstApp.Types
   ( Error (..)
   , RqType (..)
@@ -31,8 +32,13 @@ import qualified Data.Aeson.Types  as A
 
 import           Data.Time         (UTCTime)
 
-import           FirstApp.DB.Types (DBComment(dbCommentId, dbCommentTopic,
-                                    dbCommentBody, dbCommentTime))
+import           FirstApp.DB.Types (DBComment
+                                     ( DBComment
+                                     , dbCommentId
+                                     , dbCommentTopic
+                                     , dbCommentBody
+                                     , dbCommentTime
+                                     ))
 
 newtype Topic = Topic Text
   deriving (Show, ToJSON)
@@ -102,12 +108,12 @@ instance ToJSON Comment where
 fromDbComment
   :: DBComment
   -> Either Error Comment
-fromDbComment db =
+fromDbComment (DBComment {..}) =
   Comment
-    <$> (pure . CommentId) (dbCommentId db)
-    <*> mkTopic (dbCommentTopic db)
-    <*> mkCommentText (dbCommentBody db)
-    <*> pure (dbCommentTime db)
+    <$> (pure . CommentId) dbCommentId
+    <*> mkTopic dbCommentTopic
+    <*> mkCommentText dbCommentBody
+    <*> pure dbCommentTime
 
 nonEmptyText
   :: (Text -> a)
