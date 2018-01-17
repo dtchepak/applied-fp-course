@@ -3,7 +3,7 @@ module FirstApp.Main (runApp) where
 
 import           Network.Wai              (Application, Request, Response,
                                            pathInfo, requestMethod, responseLBS,
-                                           strictRequestBody)
+                                           rawPathInfo, strictRequestBody)
 import           Network.Wai.Handler.Warp (run)
 
 import           Network.HTTP.Types       (Status, hContentType, status200,
@@ -15,6 +15,8 @@ import           Network.HTTP.Types.Method (parseMethod)
 import qualified Data.ByteString.Lazy     as LBS
 
 import           Data.Either              (either)
+
+import           Data.List                (intersperse)
 
 import qualified Data.Text                as T
 import           Data.Text                (Text)
@@ -90,7 +92,8 @@ mkErrorResponse
   -> Response
 mkErrorResponse EmptyTopic       = resp400 PlainText "Empty topic"
 mkErrorResponse EmptyCommentText = resp400 PlainText "Empty comment text"
-mkErrorResponse InvalidRequest   = resp400 PlainText "Invalid request"
+mkErrorResponse (InvalidRequest method path) = resp400 PlainText
+    (LBS.fromStrict . mconcat . intersperse "\n" $ ["Invalid request", method, path])
 
 -- Use our ``RqType`` helpers to write a function that will take the input
 -- ``Request`` from the Wai library and turn it into something our application
@@ -105,7 +108,7 @@ mkRequest r =
     (Right POST, [topic, "add"])  -> mkAddRequest topic <$> strictRequestBody r
     (Right GET,  [topic, "view"]) -> pure . mkViewRequest $ topic
     (Right GET,  ["list"])        -> pure mkListRequest
-    _                             -> pure (Left InvalidRequest)
+    _                             -> pure . Left $ InvalidRequest (requestMethod r) (rawPathInfo r)
 
 -- If we find that we need more information to handle a request, or we have a
 -- new type of request that we'd like to handle then we update the ``RqType``

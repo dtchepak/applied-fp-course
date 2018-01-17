@@ -45,7 +45,8 @@ data RqType
 data Error
     = EmptyTopic
     | EmptyCommentText
-    | InvalidRequest
+    -- | Invalid request method and path info
+    | InvalidRequest ByteString ByteString
 
 -- Provide the constructors for a sum type to specify the `ContentType` Header,
 -- to be used when we build our Response type.
