@@ -204,8 +204,10 @@ confPortToWai (Conf (Port port) _) =
 
 -- Similar to when we were considering our application types, leave this empty
 -- for now and add to it as you go.
-data ConfigError = ConfigError
-  deriving Show
+data ConfigError
+    = DecodeError String
+    | MissingConfigFile FilePath
+  deriving (Show, Eq)
 
 -- Our application will be able to load configuration from both a file and
 -- command line input. We want to be able to use the command line to temporarily
