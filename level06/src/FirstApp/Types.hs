@@ -206,6 +206,8 @@ confPortToWai =
 data ConfigError
   = MissingPort
   | MissingDBFilePath
+  | DecodeError String
+  | MissingConfigFile FilePath
   deriving Show
 
 -- Our application will be able to load configuration from both a file and
