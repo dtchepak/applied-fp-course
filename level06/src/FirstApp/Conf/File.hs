@@ -80,7 +80,7 @@ decodeObj =
 -- Left (MissingConfigFile "badFileName.no")
 --
 -- >>> readObject "test.json"
--- Right "{\n  \"foo\": 33\n}\n"
+-- Right "{\"foo\":33}\n"
 --
 readObject
   :: FilePath
