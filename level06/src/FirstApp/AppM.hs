@@ -78,6 +78,6 @@ runAppM
   -> AppM a
   -> IO a
 runAppM =
-  error "runAppM not implemented"
+  flip (runReaderT . unAppM)
 
 -- Move on to ``src/FirstApp/DB.hs`` after this
