@@ -11,6 +11,7 @@ module FirstApp.DB
 
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (asks)
+import Control.Monad.Trans (lift)
 
 import Data.Bifunctor (first)
 import           Data.Text                          (Text)
@@ -25,7 +26,7 @@ import qualified Database.SQLite.Simple             as Sql
 import qualified Database.SQLite.SimpleErrors       as Sql
 import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
-import FirstApp.AppM (AppM, Env (envDB))
+import FirstApp.AppM (AppM(AppM), Env (envDB))
 
 import           FirstApp.Types                     (FirstAppDB (FirstAppDB, dbConn), Comment, CommentText,
                                                      DBFilePath (getDBFilePath),
@@ -61,15 +62,14 @@ initDB fp = Sql.runDBAction $ do
 
 getDBConn
   :: AppM Connection
-getDBConn =
-  error "getDBConn not implemented"
+getDBConn = asks (dbConn . envDB)
 
 runDB
   :: (a -> Either Error b)
   -> (Connection -> IO a)
   -> AppM (Either Error b)
-runDB =
-  error "runDB not re-implemented"
+runDB f op =
+    getDBConn >>= \c -> liftIO $ ((>>= f) . first DBError) <$>  Sql.runDBAction (op c)
 
 getComments
   :: Topic
