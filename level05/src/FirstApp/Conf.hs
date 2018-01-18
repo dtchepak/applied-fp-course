@@ -58,10 +58,8 @@ parseOptions path =
   -- Parse the options from the commandline using 'commandLineParser'
   -- Combine these with the default configuration 'defaultConf'
   -- Return the final configuration value
-  let conf defaults file cmd = defaults <> file <> cmd
-      parse =
-        parseJSONConfigFile path
+  let conf defaults file cmd = makeConfig $ defaults <> file <> cmd
+  in parseJSONConfigFile path
             >>= either
                   (pure . Left)
-                  (\f -> (Right . conf defaultConf f) <$> commandLineParser)
-  in (>>= makeConfig) <$> parse
+                  (\f -> conf defaultConf f <$> commandLineParser)
