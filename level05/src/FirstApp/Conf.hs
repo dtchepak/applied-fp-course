@@ -6,12 +6,14 @@ module FirstApp.Conf
 
 import           GHC.Word                  (Word16)
 
-import           Data.Bifunctor            (first)
-import           Data.Monoid               ((<>))
+import           Control.Applicative       (liftA2)
 
-import           FirstApp.Types            (Conf, ConfigError,
+import           Data.Bifunctor            (first)
+import           Data.Monoid               ((<>), Last(Last))
+
+import           FirstApp.Types            (Conf(Conf), ConfigError(MissingPort, MissingDBFilePath),
                                             DBFilePath (DBFilePath),
-                                            PartialConf, Port (Port))
+                                            PartialConf(PartialConf), Port (Port))
 
 import           FirstApp.Conf.CommandLine (commandLineParser)
 import           FirstApp.Conf.File        (parseJSONConfigFile)
@@ -22,7 +24,9 @@ import           FirstApp.Conf.File        (parseJSONConfigFile)
 defaultConf
   :: PartialConf
 defaultConf =
-  error "defaultConf not implemented"
+  PartialConf
+    (Last . pure . Port . fromInteger $ 3005)
+    (Last . pure . DBFilePath $ "app.db")
 
 -- We need something that will take our PartialConf and see if can finally build
 -- a complete ``Conf`` record. Also we need to highlight any missing values by
@@ -30,8 +34,11 @@ defaultConf =
 makeConfig
   :: PartialConf
   -> Either ConfigError Conf
-makeConfig =
-  error "makeConfig not implemented"
+makeConfig (PartialConf port path) =
+    case (port, path) of
+        (Last Nothing, _) -> Left MissingPort
+        (_, Last Nothing) -> Left MissingDBFilePath
+        (Last (Just port'), Last (Just path')) -> pure (Conf port' path')
 
 -- This is the function we'll actually export for building our configuration.
 -- Since it wraps all our efforts to read information from the command line, and
@@ -46,9 +53,13 @@ makeConfig =
 parseOptions
   :: FilePath
   -> IO (Either ConfigError Conf)
-parseOptions =
+parseOptions path =
   -- Parse the options from the config file: "appconfig.json"
   -- Parse the options from the commandline using 'commandLineParser'
   -- Combine these with the default configuration 'defaultConf'
   -- Return the final configuration value
-  error "parseOptions not implemented"
+  let (<+>) = (liftA2 . liftA2) (<>)
+      partial = (pure (pure defaultConf))
+                <+> parseJSONConfigFile path
+                <+> (pure <$> commandLineParser)
+  in (>>= makeConfig) <$> partial

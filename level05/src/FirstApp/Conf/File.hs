@@ -17,7 +17,8 @@ import           Data.Aeson.Types           (parseMaybe)
 import qualified Data.Aeson                 as Aeson
 
 import           FirstApp.Types             (ConfigError(DecodeError, MissingConfigFile),
-                                             PartialConf (PartialConf))
+                                             PartialConf (PartialConf), Port(Port),
+                                             DBFilePath(DBFilePath))
 -- Doctest setup section
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -89,6 +90,14 @@ readObject path =
         handleError = const (MissingConfigFile path)
     in first handleError <$> try (LBS.readFile path)
 
+parsePartialConf :: ByteString -> Either ConfigError PartialConf
+parsePartialConf b =
+    let
+        --fromIntegral . truncate
+        readPort   = fromJsonObjWithKey "dbPort" Port
+        readDbFile = fromJsonObjWithKey "dbFileName" DBFilePath
+    in (\o -> PartialConf (readPort o) (readDbFile o)) <$> decodeObj b
+
 -- Construct the function that will take a ``FilePath``, read it in and attempt
 -- to decode it as a valid JSON object, using the ``aeson`` package. Then pull
 -- specific keys off this object and construct our ``PartialConf``. Using the
@@ -96,5 +105,5 @@ readObject path =
 parseJSONConfigFile
   :: FilePath
   -> IO ( Either ConfigError PartialConf )
-parseJSONConfigFile path =
-  error "parseJSONConfigFile not implemented"
+parseJSONConfigFile path = 
+    (>>= parsePartialConf) <$> readObject path
