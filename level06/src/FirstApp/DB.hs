@@ -69,7 +69,7 @@ runDB
   -> (Connection -> IO a)
   -> AppM (Either Error b)
 runDB f op =
-    getDBConn >>= \c -> liftIO $ ((>>= f) . first DBError) <$>  Sql.runDBAction (op c)
+    getDBConn >>= liftIO . fmap ((>>= f) . first DBError) . Sql.runDBAction . op
 
 getComments
   :: Topic
