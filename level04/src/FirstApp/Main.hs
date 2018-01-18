@@ -135,12 +135,12 @@ handleRequest
   :: DB.FirstAppDB
   -> RqType
   -> IO (Either Error Response)
-handleRequest _db (AddRq t c) =
-  (resp200 PlainText "Success" <$) <$> DB.addCommentToTopic _db t c
-handleRequest _db (ViewRq t)  =
-  (resp200 PlainText . showableToLbs) `ffmap` DB.getComments _db t
-handleRequest _db ListRq      =
-  (resp200 PlainText . showableToLbs . fmap getTopic) `ffmap` DB.getTopics _db
+handleRequest db (AddRq t c) =
+  (resp200 PlainText "Success" <$) <$> DB.addCommentToTopic db t c
+handleRequest db (ViewRq t)  =
+  (resp200 PlainText . showableToLbs) `ffmap` DB.getComments db t
+handleRequest db ListRq      =
+  (resp200 PlainText . showableToLbs . fmap getTopic) `ffmap` DB.getTopics db
 
 showableToLbs :: (Show a) => a -> LBS.ByteString
 showableToLbs = LBS.pack . show
