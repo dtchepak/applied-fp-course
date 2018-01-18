@@ -31,7 +31,7 @@ import           Data.Text                          (Text)
 
 import           System.IO.Error                    (IOError)
 
-import           Data.Monoid                        (Last,
+import           Data.Monoid                        (Last, (<>),
                                                      Monoid (mappend, mempty))
 
 import           Data.List                          (stripPrefix)
@@ -190,7 +190,7 @@ newtype DBFilePath = DBFilePath
 -- The ``Conf`` type will need:
 -- - A customisable port number: ``Port``
 -- - A filepath for our SQLite database: ``DBFilePath``
-data Conf = Conf
+data Conf = Conf Port DBFilePath
 
 -- We're storing our Port as a Word16 to be more precise and prevent invalid
 -- values from being used in our application. However Wai is not so stringent.
@@ -199,8 +199,8 @@ data Conf = Conf
 confPortToWai
   :: Conf
   -> Int
-confPortToWai =
-  error "portToInt not implemented"
+confPortToWai (Conf (Port port) _) =
+  fromIntegral port
 
 -- Similar to when we were considering our application types, leave this empty
 -- for now and add to it as you go.
@@ -244,6 +244,6 @@ instance Monoid PartialConf where
   mempty = PartialConf mempty mempty
 
   mappend _a _b = PartialConf
-    { pcPort       = error "pcPort mappend not implemented"
-    , pcDBFilePath = error "pcDBFilePath mappend not implemented"
+    { pcPort       = pcPort _a <> pcPort _b
+    , pcDBFilePath = pcDBFilePath _a <> pcDBFilePath _b
     }
