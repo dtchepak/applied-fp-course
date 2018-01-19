@@ -10,6 +10,7 @@ module FirstApp.DB
   , deleteTopic
   ) where
 
+import           Control.Monad.Except               (throwError)
 import           Control.Monad.IO.Class             (liftIO)
 import           Control.Monad.Reader               (asks)
 
@@ -72,11 +73,9 @@ runDB
   -> AppM b
 runDB f op = do
     c <- getDBConn
-    result <- liftIO ((first DBError) <$> Sql.runDBAction (op c))
-    a <- throwL result
+    result <- liftIO (Sql.runDBAction (op c))
+    a <- either (throwError . DBError) pure result
     throwL (f a)
-
---  getDBConn >>= liftIO . fmap ( (>>= f) . first DBError ) . Sql.runDBAction . op
 
 getComments
   :: Topic
