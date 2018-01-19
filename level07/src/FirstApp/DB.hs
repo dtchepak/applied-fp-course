@@ -70,8 +70,13 @@ runDB
   :: (a -> Either Error b)
   -> (Connection -> IO a)
   -> AppM b
-runDB =
-  error "Copy your completed 'runDB' and refactor to match the new type signature"
+runDB f op = do
+    c <- getDBConn
+    result <- liftIO ((first DBError) <$> Sql.runDBAction (op c))
+    a <- throwL result
+    throwL (f a)
+
+--  getDBConn >>= liftIO . fmap ( (>>= f) . first DBError ) . Sql.runDBAction . op
 
 getComments
   :: Topic
