@@ -71,11 +71,11 @@ runDB
   :: (a -> Either Error b)
   -> (Connection -> IO a)
   -> AppM b
-runDB f op = do
-    c <- getDBConn
-    result <- liftIO (Sql.runDBAction (op c))
-    a <- either (throwError . DBError) pure result
-    throwL (f a)
+runDB f op =
+    getDBConn
+        >>= liftIO . Sql.runDBAction . op
+        >>= either (throwError . DBError) pure
+        >>= throwL . f
 
 getComments
   :: Topic
