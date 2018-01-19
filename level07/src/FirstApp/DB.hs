@@ -80,23 +80,29 @@ runDB f op =
 getComments
   :: Topic
   -> AppM [Comment]
-getComments =
-  error "Copy your completed 'getComments' and refactor to match the new type signature"
+getComments t =
+  let q = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
+  in runDB (traverse fromDbComment) (\c -> Sql.query c q [ getTopic t ])
 
 addCommentToTopic
   :: Topic
   -> CommentText
   -> AppM ()
-addCommentToTopic =
-  error "Copy your completed 'appCommentToTopic' and refactor to match the new type signature"
+addCommentToTopic t ct = 
+  let q = "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
+  in do
+      nowish <- liftIO getCurrentTime
+      runDB pure (\c -> Sql.execute c q (getTopic t, getCommentText ct, nowish))
 
 getTopics
   :: AppM [Topic]
 getTopics =
-  error "Copy your completed 'getTopics' and refactor to match the new type signature"
+  let q = "SELECT DISTINCT topic FROM comments"
+  in runDB (traverse ( mkTopic . Sql.fromOnly )) (flip Sql.query_ q)
 
 deleteTopic
   :: Topic
   -> AppM ()
-deleteTopic =
-  error "Copy your completed 'deleteTopic' and refactor to match the new type signature"
+deleteTopic t =
+  let q = "DELETE FROM comments WHERE topic = ?"
+  in runDB pure (\c -> Sql.execute c q [getTopic t])
