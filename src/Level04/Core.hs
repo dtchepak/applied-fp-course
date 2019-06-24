@@ -18,7 +18,7 @@ import           Network.HTTP.Types                 (Status, hContentType,
                                                      status200, status400,
                                                      status404, status500)
 
-import           Data.Bifunctor                     (first, second)
+import           Data.Bifunctor                     (first)
 import qualified Data.ByteString.Lazy.Char8         as LBS
 
 import           Data.Either                        (Either (Left, Right),
@@ -151,7 +151,7 @@ handleRequest _db ListRq      =
   jsonResponse (E.list encodeTopic) <$> DB.getTopics _db
 
 jsonResponse :: Encoder' a -> Either e a -> Either e Response
-jsonResponse = second . resp200Json
+jsonResponse = fmap . resp200Json
 
 mkRequest
   :: Request
