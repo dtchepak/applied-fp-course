@@ -15,6 +15,7 @@ module Level02.Types
 
 import           Data.ByteString (ByteString)
 import           Data.Text       (Text)
+import qualified Data.Text as T
 
 -- Working through the specification for our application, what are the
 -- types of requests we're going to handle?
@@ -57,6 +58,10 @@ newtype CommentText = CommentText Text
 -- ViewRq : Which needs the topic being requested.
 -- ListRq : Which doesn't need anything and lists all of the current topics.
 data RqType
+    = AddRq Topic CommentText
+    | ViewRq Topic
+    | ListRq
+    deriving Show
 
 -- Not everything goes according to plan, but it's important that our types
 -- reflect when errors can be introduced into our program. Additionally it's
@@ -64,7 +69,9 @@ data RqType
 
 -- Fill in the error constructors as you need them.
 data Error
-
+    = EmptyInput
+    | InvalidRequest
+    deriving Show
 
 -- Provide the constructors for a sum type to specify the `ContentType` Header,
 -- to be used when we build our Response type. Our application will be simple,
@@ -73,6 +80,9 @@ data Error
 -- - plain text
 -- - json
 data ContentType
+    = PlainText
+    | Json
+    deriving Show
 
 -- The ``ContentType`` constructors don't match what is required for the header
 -- information. Because ``wai`` uses a stringly type. So write a function that
@@ -88,8 +98,19 @@ data ContentType
 renderContentType
   :: ContentType
   -> ByteString
-renderContentType =
-  error "renderContentType not implemented"
+renderContentType PlainText = "text/plain"
+renderContentType Json      = "application/json"
+
+mkNonEmpty
+  :: (Text -> a)
+  -> Text
+  -> Either Error a
+mkNonEmpty mk =
+    if' <$> T.null <*> const (Left EmptyInput) <*> pure . mk
+
+if' :: Bool -> a -> a -> a
+if' True a _ = a
+if' False _ a = a
 
 -- We can choose to *not* export the constructor for a data type and instead
 -- provide a function of our own. In our case, we're not interested in empty
@@ -103,24 +124,24 @@ mkTopic
   :: Text
   -> Either Error Topic
 mkTopic =
-  error "mkTopic not implemented"
+  mkNonEmpty Topic
 
 getTopic
   :: Topic
   -> Text
-getTopic =
-  error "getTopic not implemented"
+getTopic (Topic t) =
+  t
 
 mkCommentText
   :: Text
   -> Either Error CommentText
 mkCommentText =
-  error "mkCommentText not implemented"
+  mkNonEmpty CommentText
 
 getCommentText
   :: CommentText
   -> Text
-getCommentText =
-  error "getCommentText not implemented"
+getCommentText (CommentText t) =
+  t
 
 ---- Go to `src/Level02/Core.hs` next
