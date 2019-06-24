@@ -7,6 +7,7 @@ module Level05.AppM
   , runAppM
   ) where
 
+import           Control.Applicative    (liftA2)
 import           Control.Monad.Except   (MonadError (..))
 import           Control.Monad.IO.Class (MonadIO (..))
 
@@ -70,34 +71,45 @@ runAppM
 runAppM (AppM m) =
   m
 
+(<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+(<$$>) = fmap . fmap
+
+(<**>) :: (Applicative f, Applicative g) => f (g (a -> b)) -> f (g a) -> f (g b)
+(<**>) = liftA2 (<*>)
+
 instance Functor AppM where
   fmap :: (a -> b) -> AppM a -> AppM b
-  fmap = error "fmap for AppM not implemented"
+  fmap f = AppM . (<$$>) f . runAppM
 
 instance Applicative AppM where
   pure :: a -> AppM a
-  pure  = error "pure for AppM not implemented"
+  pure  = AppM . pure . pure
 
   (<*>) :: AppM (a -> b) -> AppM a -> AppM b
-  (<*>) = error "spaceship for AppM not implemented"
+  AppM f <*> AppM a = AppM (f <**> a)
+
+  -- Or using (>>=):
+  --    f <*> g = f >>= (<$> g)
 
 instance Monad AppM where
   return :: a -> AppM a
-  return = error "return for AppM not implemented"
+  return = pure
 
   (>>=) :: AppM a -> (a -> AppM b) -> AppM b
-  (>>=)  = error "bind for AppM not implemented"
+  AppM a >>= f = AppM $
+    a >>= either (pure . Left) (runAppM . f)
 
 instance MonadIO AppM where
   liftIO :: IO a -> AppM a
-  liftIO = error "liftIO for AppM not implemented"
+  liftIO = AppM . (<$>) pure
 
 instance MonadError Error AppM where
   throwError :: Error -> AppM a
-  throwError = error "throwError for AppM not implemented"
+  throwError = AppM . pure . Left
 
   catchError :: AppM a -> (Error -> AppM a) -> AppM a
-  catchError = error "catchError for AppM not implemented"
+  catchError (AppM a) f = AppM $
+    a >>= either (runAppM . f) (pure . Right)
 
 -- This is a helper function that will `lift` an Either value into our new AppM
 -- by applying `throwError` to the Left value, and using `pure` to lift the
@@ -110,6 +122,6 @@ liftEither
   :: Either Error a
   -> AppM a
 liftEither =
-  error "liftEither not implemented"
+  either throwError pure
 
 -- Go to 'src/Level05/DB.hs' next.
