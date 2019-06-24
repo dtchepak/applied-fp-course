@@ -96,7 +96,9 @@ mkErrorResponse
   :: Error
   -> Response
 mkErrorResponse =
-    let msg EmptyInput = "Empty input"
+    let msg EmptyTopic = "Empty Topic"
+        msg EmptyCommentText = "Empty Comment Text"
+        msg (InvalidRoute m p) = showThese ["Invalid Route: ", show m, " ", show p]
     in resp400 PlainText . msg
 
 -- | Use our ``RqType`` helpers to write a function that will take the input
@@ -112,7 +114,7 @@ mkRequest req =
     ("POST", [t, "add"]) -> mkAddRequest t <$> strictRequestBody req
     ("GET", [t, "view"]) -> pure . mkViewRequest $ t
     ("GET", ["list"]) -> pure mkListRequest
-    (method, paths) -> pure . Left $ InvalidRequest -- TODO: add ctor params
+    (method, paths) -> pure . Left $ InvalidRoute method paths
 
 -- | If we find that we need more information to handle a request, or we have a
 -- new type of request that we'd like to handle then we update the ``RqType``

@@ -69,9 +69,16 @@ data RqType
 
 -- Fill in the error constructors as you need them.
 data Error
-    = EmptyInput
-    | InvalidRequest
+    = EmptyTopic
+    | EmptyCommentText
+    | InvalidRoute Method Path
     deriving Show
+
+-- Method from WAI
+type Method = ByteString
+-- pathInfo from WAI
+type Path = [Text]
+
 
 -- Provide the constructors for a sum type to specify the `ContentType` Header,
 -- to be used when we build our Response type. Our application will be simple,
@@ -103,10 +110,11 @@ renderContentType Json      = "application/json"
 
 mkNonEmpty
   :: (Text -> a)
+  -> Error
   -> Text
   -> Either Error a
-mkNonEmpty mk =
-    if' <$> T.null <*> const (Left EmptyInput) <*> pure . mk
+mkNonEmpty mk e =
+    if' <$> T.null <*> const (Left e) <*> pure . mk
 
 if' :: Bool -> a -> a -> a
 if' True a _ = a
@@ -124,7 +132,7 @@ mkTopic
   :: Text
   -> Either Error Topic
 mkTopic =
-  mkNonEmpty Topic
+  mkNonEmpty Topic EmptyTopic
 
 getTopic
   :: Topic
@@ -136,7 +144,7 @@ mkCommentText
   :: Text
   -> Either Error CommentText
 mkCommentText =
-  mkNonEmpty CommentText
+  mkNonEmpty CommentText EmptyCommentText
 
 getCommentText
   :: CommentText
