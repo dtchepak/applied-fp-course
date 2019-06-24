@@ -29,7 +29,8 @@ import           Test.Tasty         (defaultMain, testGroup)
 
 -- | 'tasty-wai' makes it easier to create requests to submit to our
 -- application, and provides some helper functions for checking our assertions.
-import           Test.Tasty.Wai     (assertBody, assertStatus', get, post, put,
+import           Test.Tasty.Wai     (assertBody, assertStatus', assertBodyContains,
+                                     get, post, put,
                                      testWai)
 
 -- | For running unit tests for individual functions, we have included the
@@ -44,29 +45,53 @@ import           Network.HTTP.Types as HTTP
 -- | This import is provided for you so you can check your work from Level02. As
 -- you move forward, come back and import your latest 'Application' so that you
 -- can test your work as you progress.
-import qualified Level02.Core       as Core
+import qualified Level04.Core       as Core
+import qualified Level04.DB         as DB
+
+initDb :: IO DB.FirstAppDB
+initDb =
+    DB.initDB ":memory:" >>= either (error . show) pure
 
 main :: IO ()
-main = defaultMain $ testGroup "Applied FP Course - Tests"
+main = initDb >>= \db ->
+    defaultMain $ testGroup "Applied FP Course - Tests"
 
-  [ testWai Core.app "View Topic" $
+  [ testWai (Core.app db) "View Topic" $
       get "fudge/view" >>= assertStatus' HTTP.status200
 
-  , testWai Core.app "Empty Comment" $ do
+  , testWai (Core.app db) "Empty Comment" $ do
       resp <- post "fudge/add" ""
       assertStatus' HTTP.status400 resp
-      assertBody "Empty Comment Text" resp
+      assertBody "Empty Comment" resp
 
-  , testWai Core.app "Invalid Route" $ do
+  , testWai (Core.app db) "Invalid Route" $ do
      resp <- post "/add" "comment"
-     assertStatus' HTTP.status400 resp
-     assertBody "Invalid Route: \"POST\" [\"add\"]" resp
+     assertStatus' HTTP.status404 resp
+     assertBody "Unknown Route" resp
 
-  , testWai Core.app "List Topics" $
+  , testWai (Core.app db) "List Topics" $
       get "/list" >>= assertStatus' HTTP.status200
 
-  , testWai Core.app "Invalid HTTP method" $ do
+  , testWai (Core.app db) "Invalid HTTP method" $ do
       resp <- put "/list" ""
-      assertStatus' HTTP.status400 resp
-      assertBody "Invalid Route: \"PUT\" [\"list\"]" resp
+      assertStatus' HTTP.status404 resp
+      assertBody "Unknown Route" resp
+
+  , testWai (Core.app db) "List Posted Comments" $ do
+      post "puppies/add" "are awesome"
+      post "puppies/add" "are better than cats"
+      post "puppies/add" "101!"
+      resp <- get "puppies/view"
+      assertStatus' HTTP.status200 resp
+      assertBodyContains "are awesome" resp
+      assertBodyContains "are better than cat" resp
+      assertBodyContains "101!" resp
+
+  , testWai (Core.app db) "List Topics" $ do
+      post "puppies/add" "are awesome"
+      post "cats/add" "beg to differ"
+      post "puppies/add" "101!"
+      resp <- get "/list"
+      assertStatus' HTTP.status200 resp
+      assertBody "[\"puppies\",\"cats\"]" resp
   ]
