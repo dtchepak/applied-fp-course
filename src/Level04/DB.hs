@@ -88,7 +88,7 @@ getComments (FirstAppDB db) topic =
   -- there may be a trade-off between deciding to throw an Error if a DBComment
   -- cannot be converted to a Comment, or simply ignoring any DBComment that is
   -- not valid.
-  in handleDBError $ traverse fromDBComment <$> Sql.query db sql [getTopic topic]
+  in traverse' fromDBComment <$> runDBAction (Sql.query db sql [getTopic topic])
 
 addCommentToTopic
   :: FirstAppDB
@@ -102,20 +102,13 @@ addCommentToTopic (FirstAppDB db) topic ct =
     now <- getCurrentTime
     Sql.execute db sql (getTopic topic, getCommentText ct, now)
 
-runDBAction :: IO a -> IO (Either Error a)
-runDBAction a =
-    first DBError <$> Sql.runDBAction a
-
-handleDBError :: IO (Either Error a) -> IO (Either Error a)
-handleDBError action = join <$> runDBAction action
-
 getTopics
   :: FirstAppDB
   -> IO (Either Error [Topic])
 getTopics (FirstAppDB db) =
   let
     sql = "SELECT DISTINCT topic FROM comments"
-  in handleDBError $ traverse (mkTopic . Sql.fromOnly) <$> Sql.query_ db sql
+  in traverse' (mkTopic . Sql.fromOnly) <$> runDBAction (Sql.query_ db sql)
 
 deleteTopic
   :: FirstAppDB
@@ -125,3 +118,11 @@ deleteTopic (FirstAppDB db) topic =
   let
     sql = "DELETE FROM comments WHERE topic = ?"
   in runDBAction $ Sql.execute db sql [getTopic topic]
+
+runDBAction :: IO a -> IO (Either Error a)
+runDBAction a =
+    first DBError <$> Sql.runDBAction a
+
+traverse' :: (Monad f, Traversable t) => (a -> f b) -> f (t a) -> f (t b)
+traverse' f = (>>= traverse f)
+
