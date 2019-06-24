@@ -122,6 +122,6 @@ liftEither
   :: Either Error a
   -> AppM a
 liftEither =
-  either throwError pure
+  AppM . pure
 
 -- Go to 'src/Level05/DB.hs' next.
