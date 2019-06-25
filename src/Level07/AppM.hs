@@ -7,6 +7,7 @@ module Level07.AppM
   , App
   , Env (..)
   , liftEither
+  , hoistError
   , runApp
   ) where
 
@@ -15,6 +16,7 @@ import           Control.Monad.Except   (MonadError (..))
 import           Control.Monad.IO.Class (MonadIO (..))
 import           Control.Monad.Reader   (MonadReader (..))
 
+import           Data.Bifunctor         (first)
 import           Data.Text              (Text)
 
 import           Level07.Types          (Conf, FirstAppDB)
@@ -118,5 +120,8 @@ instance MonadIO (AppM e) where
 --
 liftEither :: Either e a -> AppM e a
 liftEither = AppM . const . pure
+
+hoistError :: (e -> e') -> AppM e' (Either e a) -> AppM e' a
+hoistError f = (>>= liftEither . first f)
 
 -- Move on to ``src/Level07/DB.hs`` after this

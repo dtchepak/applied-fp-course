@@ -77,13 +77,13 @@ getComments
   :: FirstAppDB
   -> Topic
   -> App [Comment]
-getComments db t = do
+getComments db t =
   -- Write the query with an icky string and remember your placeholders!
   let q = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
   -- To be doubly and triply sure we've no garbage in our response, we take care
   -- to convert our DB storage type into something we're going to share with the
   -- outside world. Checking again for things like empty Topic or CommentText values.
-  runDB (traverse fromDBComment) $ Sql.query (dbConn db) q (Sql.Only . getTopic $ t)
+  in runDB (traverse fromDBComment) $ Sql.query (dbConn db) q (Sql.Only . getTopic $ t)
 
 addCommentToTopic
   :: FirstAppDB
