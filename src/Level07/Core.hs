@@ -8,6 +8,7 @@ module Level07.Core
 import           Control.Applicative                (liftA2)
 import qualified Control.Exception                  as Ex
 import           Control.Monad                      (join)
+import           Control.Monad.Trans.Class          (lift)
 
 import           Control.Monad.IO.Class             (liftIO)
 import           Control.Monad.Reader               (asks)
@@ -25,7 +26,7 @@ import           Data.Either                        (Either (Left, Right),
 import           Data.Text                          (Text)
 import qualified Data.Text                          as Text
 import           Data.Text.Encoding                 (decodeUtf8)
-import           Data.Text.IO                       (hPutStrLn)
+import qualified Data.Text.IO                       as Text
 
 import qualified Data.ByteString.Lazy.Char8         as LBS
 
@@ -39,19 +40,19 @@ import qualified Level07.Conf                       as Conf
 import qualified Level07.DB                         as DB
 
 import qualified Level07.Responses                  as Res
-import           Level07.Types                      (Conf, ConfigError,
+import           Level07.Types                      (Conf(..), ConfigError,
                                                      ContentType (PlainText),
                                                      Error (..), RqType (..),
                                                      confPortToWai,
                                                      encodeComment, encodeTopic,
                                                      mkCommentText, mkTopic)
 
-import           Level07.AppM                       (App, Env (..), liftEither,
+import           Level07.AppM                       (App, Env (..), liftEither, hoistError,
                                                      runApp)
 
 -- | We're going to use the `mtl` ExceptT monad transformer to make the loading of
 -- our `Conf` a bit more straight-forward.
-import           Control.Monad.Except               (ExceptT (..), runExceptT)
+import           Control.Monad.Except               (ExceptT (..), runExceptT, withExceptT)
 
 -- | Our start-up is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
@@ -83,9 +84,16 @@ runApplication = do
 -- 'mtl' on Hackage: https://hackage.haskell.org/package/mtl
 --
 prepareAppReqs :: ExceptT StartUpError IO Env
-prepareAppReqs = error "prepareAppReqs not reimplemented with ExceptT"
+prepareAppReqs =
+  let withEx f = withExceptT f . ExceptT
+  in do
+    conf <- withEx ConfErr (Conf.parseOptions "files/appconfig.json")
+    db <- withEx DBInitErr (DB.initDB (dbFilePath conf))
+    pure (Env (liftIO . Text.putStrLn) conf db)
+
   -- You may copy your previous implementation of this function and try refactoring it. On the
   -- condition you have to explain to the person next to you what you've done and why it works.
+
 
 -- | Now that our request handling and response creating functions operate
 -- within our App context, we need to run the App to get our IO action out
@@ -94,8 +102,11 @@ prepareAppReqs = error "prepareAppReqs not reimplemented with ExceptT"
 app
   :: Env
   -> Application
-app =
-  error "Copy your completed 'app' from the previous level and refactor it here"
+app env rq cb =
+  runApp (handleRequest =<< mkRequest rq) env >>= cb . handleRespErr
+  where
+    handleRespErr :: Either Error Response -> Response
+    handleRespErr = either mkErrorResponse id
 
 handleRequest
   :: RqType
