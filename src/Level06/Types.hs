@@ -183,6 +183,8 @@ confPortToWai =
 data ConfigError
   = BadConfFile DecodeError
   | ConfIOError IOException
+  | MissingPort
+  | MissingDbFilePath
   deriving Show
 
 -- Our application will be able to load configuration from both a file and

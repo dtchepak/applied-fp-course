@@ -7,12 +7,16 @@ module Level06.Conf
 import           GHC.Word                 (Word16)
 
 import           Data.Bifunctor           (first)
-import           Data.Monoid              ((<>))
+import           Data.Functor             (($>))
+import           Data.Monoid              ((<>), Last(..))
 
-import           Level06.AppM             (AppM)
-import           Level06.Types            (Conf, ConfigError,
+import           Control.Monad.IO.Class   (liftIO)
+
+import           Level06.AppM             (AppM, liftEither)
+import           Level06.Types            (Conf(..), ConfigError(..),
                                            DBFilePath (DBFilePath), PartialConf,
-                                           Port (Port))
+                                           Port (Port),
+                                           PartialConf(..))
 
 import           Level06.Conf.CommandLine (commandLineParser)
 import           Level06.Conf.File        (parseJSONConfigFile)
@@ -23,7 +27,7 @@ import           Level06.Conf.File        (parseJSONConfigFile)
 defaultConf
   :: PartialConf
 defaultConf =
-  error "defaultConf not implemented"
+  PartialConf (mempty $> Port 3000) (mempty $> DBFilePath "app.db")
 
 -- | We need something that will take our PartialConf and see if can finally build
 -- a complete ``Conf`` record. Also we need to highlight any missing values by
@@ -31,8 +35,19 @@ defaultConf =
 makeConfig
   :: PartialConf
   -> Either ConfigError Conf
-makeConfig =
-  error "makeConfig not implemented"
+makeConfig (PartialConf p f) =
+    Conf
+        <$> p `lastOr` MissingPort
+        <*> f `lastOr` MissingDbFilePath
+{-
+makeConfig (PartialConf (Last Nothing) _) = Left MissingPort
+makeConfig (PartialConf _ (Last Nothing)) = Left MissingDbFilePath
+makeConfig (PartialConf (Last (Just p)) (Last (Just d))) = Right (Conf p d)
+-}
+
+lastOr :: Last a -> b -> Either b a
+lastOr (Last (Just x)) _ = Right x
+lastOr _ b = Left b
 
 -- | This is the function we'll actually export for building our configuration.
 -- Since it wraps all our efforts to read information from the command line, and
@@ -47,9 +62,12 @@ makeConfig =
 parseOptions
   :: FilePath
   -> AppM ConfigError Conf
-parseOptions =
+parseOptions f = do
   -- Parse the options from the config file: "files/appconfig.json"
+  file <- parseJSONConfigFile f
   -- Parse the options from the commandline using 'commandLineParser'
+  commandLine <- liftIO commandLineParser
   -- Combine these with the default configuration 'defaultConf'
   -- Return the final configuration value
-  error "parseOptions not implemented"
+  liftEither (makeConfig (defaultConf <> file <> commandLine))
+

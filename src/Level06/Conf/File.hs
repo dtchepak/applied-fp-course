@@ -20,7 +20,7 @@ import qualified Waargonaut.Attoparsec      as D
 import qualified Waargonaut.Decode          as D
 import           Waargonaut.Decode.Error    (DecodeError (ParseFailed))
 
-import           Level06.AppM               (AppM, liftEither)
+import           Level06.AppM               (AppM, liftEither, hoistError)
 import           Level06.Types              (ConfigError (..),
                                              PartialConf (PartialConf),
                                              partialConfDecoder)
@@ -41,7 +41,7 @@ readConfFile
   :: FilePath
   -> AppM ConfigError ByteString
 readConfFile =
-  handleError ConfIOError . liftIO . try . BS.readFile
+  hoistError ConfIOError . liftIO . try . BS.readFile
 
   -- (>>= liftEither . first ConfIOError) . liftIO . try . BS.readFile
 
@@ -54,9 +54,6 @@ parseJSONConfigFile f =
   let
     decode = D.decodeAttoparsecByteString partialConfDecoder
   in readConfFile f >>=
-    handleError (BadConfFile . fst) . decode
-
-handleError :: (e' -> e) -> AppM e (Either e' a) -> AppM e a
-handleError f = (>>= liftEither . first f)
+    hoistError (BadConfFile . fst) . decode
 
 -- Go to 'src/Level06/Conf.hs' next.

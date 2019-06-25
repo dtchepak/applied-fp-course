@@ -5,6 +5,7 @@ module Level06.AppM
   ( AppM
   , App
   , liftEither
+  , hoistError
   , runAppM
   , runApp
   ) where
@@ -94,3 +95,7 @@ instance Bifunctor AppM where
 --
 liftEither :: Either e a -> AppM e a
 liftEither = AppM . pure
+
+hoistError :: (e' -> e) -> AppM e (Either e' a) -> AppM e a
+hoistError f = (>>= liftEither . first f)
+
