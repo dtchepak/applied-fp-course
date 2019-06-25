@@ -27,9 +27,12 @@ module Level06.Types
   , renderContentType
   , confPortToWai
   , fromDBComment
+  , partialConfDecoder
   ) where
 
 import           GHC.Word                           (Word16)
+
+import           Control.Exception                  (IOException)
 
 import           Data.ByteString                    (ByteString)
 import           Data.Text                          (Text, pack)
@@ -179,6 +182,7 @@ confPortToWai =
 -- build our application and the compiler can help us out.
 data ConfigError
   = BadConfFile DecodeError
+  | ConfIOError IOException
   deriving Show
 
 -- Our application will be able to load configuration from both a file and
@@ -237,10 +241,10 @@ instance Monoid PartialConf where
 -- data structure.
 --
 portDecoder :: Monad f => Decoder f Port
-portDecoder = error "todo"
+portDecoder = Port <$> D.integral
 
 dbFilePathDecoder :: Monad f => Decoder f DBFilePath
-dbFilePathDecoder = error "todo"
+dbFilePathDecoder = DBFilePath <$> D.string
 
 lastDecoder :: Monad f => Decoder f a -> Decoder f (Last a)
 lastDecoder = fmap Last . D.maybeOrNull
