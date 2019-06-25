@@ -155,6 +155,9 @@ newtype DBFilePath = DBFilePath
 -- - A customisable port number: ``Port``
 -- - A filepath for our SQLite database: ``DBFilePath``
 data Conf = Conf
+  { confPort :: Port
+  , confDb   :: DBFilePath
+  }
 
 -- We're storing our Port as a Word16 to be more precise and prevent invalid
 -- values from being used in our application. However Wai is not so stringent.
@@ -170,7 +173,7 @@ confPortToWai
   :: Conf
   -> Int
 confPortToWai =
-  error "confPortToWai not implemented"
+  fromIntegral . getPort . confPort
 
 -- Similar to when we were considering our application types. We can add to this sum type as we
 -- build our application and the compiler can help us out.
@@ -212,8 +215,8 @@ data PartialConf = PartialConf
 -- on the ``Semigroup`` instance for Last to always get the last value.
 instance Semigroup PartialConf where
   _a <> _b = PartialConf
-    { pcPort       = error "pcPort (<>) not implemented"
-    , pcDBFilePath = error "pcDBFilePath (<>) not implemented"
+    { pcPort       = pcPort _a <> pcPort _b
+    , pcDBFilePath = pcDBFilePath _a <> pcDBFilePath _b
     }
 
 -- We now define our ``Monoid`` instance for ``PartialConf``. Allowing us to
@@ -232,7 +235,19 @@ instance Monoid PartialConf where
 -- library to handle the parsing and decoding for us. In order to do this, we
 -- have to tell waargonaut how to go about converting the JSON into our PartialConf
 -- data structure.
+--
+portDecoder :: Monad f => Decoder f Port
+portDecoder = error "todo"
+
+dbFilePathDecoder :: Monad f => Decoder f DBFilePath
+dbFilePathDecoder = error "todo"
+
+lastDecoder :: Monad f => Decoder f a -> Decoder f (Last a)
+lastDecoder = fmap Last . D.maybeOrNull
+
 partialConfDecoder :: Monad f => Decoder f PartialConf
-partialConfDecoder = error "PartialConf Decoder not implemented"
+partialConfDecoder = PartialConf
+    <$> D.atKey "port" (lastDecoder portDecoder)
+    <*> D.atKey "dbName" (lastDecoder dbFilePathDecoder)
 
 -- Go to 'src/Level06/Conf/File.hs' next
