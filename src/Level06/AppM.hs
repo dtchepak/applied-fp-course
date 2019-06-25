@@ -48,6 +48,9 @@ runApp = runAppM
 -- | Copy from previous level and refactor, or reimplement to practice. The choice is yours.
 -- | -----------------------------------------------------------------------------------------------
 
+
+-- Implementing these in terms of Monad this time. Did from basics in Level05/AppM.hs
+
 instance Functor (AppM e) where
   fmap :: (a -> b) -> AppM e a -> AppM e b
   fmap f = (>>= (pure . f))
