@@ -7,6 +7,8 @@ module Level04.Core
 
 import           Control.Applicative                (liftA2)
 import           Control.Monad                      (join)
+import qualified Control.Exception                  as Ex
+
 
 import           Network.Wai                        (Application, Request,
                                                      Response, pathInfo,
@@ -52,9 +54,9 @@ data StartUpError
   deriving Show
 
 runApp :: IO ()
-runApp = do
-    result <- prepareAppReqs
-    either (error . show) (run 3000 . app) result
+runApp =
+    prepareAppReqs >>=
+      either (error . show) (Ex.finally <$> run 3000 . app <*> DB.closeDB)
 
 -- We need to complete the following steps to prepare our app requirements:
 --
