@@ -45,39 +45,44 @@ import           Network.HTTP.Types as HTTP
 -- | This import is provided for you so you can check your work from Level02. As
 -- you move forward, come back and import your latest 'Application' so that you
 -- can test your work as you progress.
-import qualified Level05.Core       as Core
-import qualified Level05.DB         as DB
+import qualified Level06.Core       as Core
+import qualified Level06.DB         as DB
+import qualified Level06.Conf       as Conf
+import           Level06.Types      (Conf(..), Port(..), DBFilePath(..))
 
 initDb :: IO DB.FirstAppDB
 initDb =
     DB.initDB ":memory:" >>= either (error . show) pure
 
+conf :: Conf
+conf = Conf (Port 3000) (DBFilePath ":memory:")
+
 main :: IO ()
 main = initDb >>= \db ->
     defaultMain $ testGroup "Applied FP Course - Tests"
 
-  [ testWai (Core.app db) "View Topic" $
+  [ testWai (Core.app conf db) "View Topic" $
       get "fudge/view" >>= assertStatus' HTTP.status200
 
-  , testWai (Core.app db) "Empty Comment" $ do
+  , testWai (Core.app conf db) "Empty Comment" $ do
       resp <- post "fudge/add" ""
       assertStatus' HTTP.status400 resp
       assertBody "Empty Comment" resp
 
-  , testWai (Core.app db) "Invalid Route" $ do
+  , testWai (Core.app conf db) "Invalid Route" $ do
      resp <- post "/add" "comment"
      assertStatus' HTTP.status404 resp
      assertBody "Unknown Route" resp
 
-  , testWai (Core.app db) "List Topics" $
+  , testWai (Core.app conf db) "List Topics" $
       get "/list" >>= assertStatus' HTTP.status200
 
-  , testWai (Core.app db) "Invalid HTTP method" $ do
+  , testWai (Core.app conf db) "Invalid HTTP method" $ do
       resp <- put "/list" ""
       assertStatus' HTTP.status404 resp
       assertBody "Unknown Route" resp
 
-  , testWai (Core.app db) "List Posted Comments" $ do
+  , testWai (Core.app conf db) "List Posted Comments" $ do
       post "puppies/add" "are awesome"
       post "puppies/add" "are better than cats"
       post "puppies/add" "101!"
@@ -87,7 +92,7 @@ main = initDb >>= \db ->
       assertBodyContains "are better than cat" resp
       assertBodyContains "101!" resp
 
-  , testWai (Core.app db) "List Topics" $ do
+  , testWai (Core.app conf db) "List Topics" $ do
       post "puppies/add" "are awesome"
       post "cats/add" "beg to differ"
       post "puppies/add" "101!"
