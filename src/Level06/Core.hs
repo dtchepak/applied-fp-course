@@ -45,7 +45,7 @@ import           Level06.Types                      (Conf(..), ConfigError,
                                                      Error (..),
                                                      RqType (AddRq, ListRq, ViewRq),
                                                      encodeComment, encodeTopic,
-                                                     getDBFilePath,
+                                                     getDBFilePath, confPortToWai,
                                                      mkCommentText, mkTopic,
                                                      renderContentType)
 
@@ -66,7 +66,7 @@ runApplication = do
     Left err   ->
       putStrLn (show err)
     Right (cfg, db) ->
-      Ex.finally (run 3000 (app cfg db)) (DB.closeDB db)
+      Ex.finally (run (confPortToWai cfg) (app cfg db)) (DB.closeDB db)
 
 -- | We need to complete the following steps to prepare our app requirements:
 --
@@ -85,8 +85,6 @@ prepareAppReqs = do
   conf <- first ConfErr (Conf.parseOptions "files/appconfig.json")
   db <- hoistError DBInitErr . liftIO  . DB.initDB $ (getDBFilePath . confDb)  conf
   pure (conf, db)
-
---  liftIO (first DBInitErr <$> DB.initDB (Conf.dbFilePath Conf.firstAppConfig))
 
 -- | Some helper functions to make our lives a little more DRY.
 mkResponse
